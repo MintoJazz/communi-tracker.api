@@ -1,20 +1,21 @@
 package com.example.communitracker.repository;
 
-import java.math.BigDecimal;
-import java.util.List;
-
 import org.springframework.stereotype.Repository;
-
 import com.example.communitracker.domain.Account;
+import com.example.communitracker.interfaces.AccountRepository;
 
-@Repository
-public class AccountRepositoryMock implements AccountRepository {
-    @Override
-    public List<Account> getAccounts() {
-        return List.of(
-            new Account(1L, "Fundo Solidário Principal", new BigDecimal("15000.00")),
-            new Account(2L, "Empreendimento Local", new BigDecimal("350.50"))
-        );
+@Repository public class AccountRepositoryMock implements AccountRepository {
+    private final AccountDataStore db;
+
+    public AccountRepositoryMock(AccountDataStore db) {
+        this.db = db;
     }
 
+    @Override
+    public Account save(Account account) {
+        Long newId = (long) (db.accounts.size() + 1);
+        Account newAccount = new Account(newId, account.owner(), account.balance());
+        db.accounts.add(newAccount);
+        return newAccount;
+    }
 }
