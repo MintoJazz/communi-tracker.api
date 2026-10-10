@@ -2,7 +2,8 @@ package com.example.communitracker.usecase;
 
 import com.example.communitracker.core.Result;
 import com.example.communitracker.domain.Account;
-import com.example.communitracker.repository.AccountRepository;
+import com.example.communitracker.interfaces.AccountQueries;
+
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -20,7 +21,7 @@ import static org.mockito.Mockito.when;
 class ListAccountsUseCaseTest {
 
     @Mock
-    private AccountRepository accountRepository;
+    private AccountQueries accountQueries;
 
     @InjectMocks
     private ListAccountsUseCase listAccountsUseCase;
@@ -28,7 +29,7 @@ class ListAccountsUseCaseTest {
     @Test
     void shouldReturnSuccessWhenRepositoryReturnsAccounts() {
         var account = new Account(1L, "Test Owner", BigDecimal.TEN);
-        when(accountRepository.getAccounts()).thenReturn(List.of(account));
+        when(accountQueries.getAccounts()).thenReturn(List.of(account));
 
         Result<List<Account>> result = listAccountsUseCase.execute();
 
@@ -40,7 +41,7 @@ class ListAccountsUseCaseTest {
 
     @Test
     void shouldReturnFailureWhenRepositoryReturnsNull() {
-        when(accountRepository.getAccounts()).thenReturn(null);
+        when(accountQueries.getAccounts()).thenReturn(null);
 
         Result<List<Account>> result = listAccountsUseCase.execute();
 
