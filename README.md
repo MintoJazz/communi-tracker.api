@@ -11,12 +11,13 @@ Nesta etapa, a aplicação foi estruturada seguindo os princípios de **Clean Ar
 - **Linguagem:** Java 21
 - **Framework:** Spring Boot 4.x
 - **Padrões Aplicados:**
-  - **Clean Architecture:** Divisão em pacotes (`core`, `domain`, `interfaces`, `usecase`, `repository`, `controller`).
-  - **Segregação de Interfaces (CQRS-lite / ISP):** Separação entre contratos de leitura (`AccountQueries`) e contratos de escrita (`AccountRepository`).
+  - **Arquitetura Hexagonal (Ports and Adapters):** Isolamento total do núcleo da aplicação (Domínio e Casos de Uso) contra frameworks de entrega e persistência através de Portas Primárias (`CreateSolidarityCreditApplication`), Portas Secundárias (`CreditRequestRepository`), Driving Adapters (`SolidarityCreditController`) e Driven Adapters (`CreditRequestRepositoryImpl`).
+  - **Clean Architecture & Camadas:** Divisão em pacotes (`core`, `domain`, `interfaces`, `usecase`, `repository`, `controller`).
+  - **Segregação de Interfaces (CQRS-lite / ISP):** Separação entre contratos de leitura (`AccountQueries`) e contratos de escrita (`AccountRepository`, `CreditRequestRepository`).
   - **Result Pattern:** Com Sealed Interfaces para previsibilidade no retorno dos casos de uso, eliminando exceções como fluxo de controle.
   - **Records:** Entidades e DTOs modelados como Records para garantir imutabilidade.
-  - **Single Responsibility em Controllers:** Separação entre gerenciamento da coleção (`AccountsController`) e operações pontuais por recurso (`AccountDetailController`).
-- **Banco de Dados:** Atualmente utilizando um DataStore compartilhado em memória (`AccountDataStore`) com implementações mock (`AccountQueriesMock` e `AccountRepositoryMock`). A persistência real com PostgreSQL será implementada nas próximas etapas.
+  - **Resource-Oriented Controllers (Segregação por Rota):** Separação estrita de cada controlador pela sua string de rota REST única (`AccountsController` para `/accounts`, `AccountDetailController` para `/accounts/{id}` e `SolidarityCreditController` para `/credit/solidarity`).
+- **Banco de Dados:** Atualmente utilizando DataStores compartilhados em memória (`AccountDataStore`, `CreditRequestDataStore`) com implementações mock/em memória. A persistência real com PostgreSQL será implementada nas próximas etapas.
 
 ## 🚀 Como Executar o Projeto
 
@@ -32,7 +33,7 @@ O projeto utiliza o **Gradle Wrapper (`gradlew`)**, portanto, você não precisa
 2. Mude para a branch da entrega:
 
    ```bash
-   git checkout feature/aula-04-proposta-arquitetura
+   git checkout feature/aula-05-arquitetura-hexagonal
    ```
 
 3. Execute a aplicação via Gradle Wrapper:
@@ -71,9 +72,10 @@ Para garantir a qualidade da aplicação, execute:
   ```
 
 Os testes cobrem:
-- **Use Cases:** Regras de negócio, fluxos de sucesso e validações de erro (`ListAccountsUseCaseTest`, `GetAccountUseCaseTest`, `CreateAccountUseCaseTest`).
-- **Controllers:** Rotas REST, status HTTP e payloads (`HealthControllerTest`, `AccountsControllerTest`, `AccountDetailControllerTest`).
-- **Repositório em Memória:** Integridade de consultas e geração de IDs (`AccountQueriesMockTest`, `AccountRepositoryMockTest`).
+
+- **Use Cases:** Regras de negócio, fluxos de sucesso e validações de erro (`ListAccountsUseCaseTest`, `GetAccountUseCaseTest`, `CreateAccountUseCaseTest`, `CreateSolidarityCreditUseCaseTest`).
+- **Controllers:** Rotas REST, status HTTP e payloads (`HealthControllerTest`, `AccountsControllerTest`, `AccountDetailControllerTest`, `SolidarityCreditControllerTest`).
+- **Repositórios e DataStores:** Integridade de consultas, persistência e autoincremento (`AccountQueriesMockTest`, `AccountRepositoryMockTest`, `CreditRequestRepositoryImplTest`).
 
 Ao final da execução, todos os testes devem passar com `BUILD SUCCESSFUL`. Os relatórios ficam salvos no diretório `build/reports/tests/test/index.html`.
 
@@ -176,15 +178,93 @@ curl -X POST http://localhost:8080/accounts \
 ```
 
 **Validações e Casos de Erro (400 Bad Request):**
+
 - Caso o campo `owner` seja nulo ou vazio:
+
   ```json
   {
     "error": "O nome do titular é obrigatório."
   }
   ```
+
 - Caso o campo `initialBalance` seja nulo ou negativo:
+
   ```json
   {
     "error": "O saldo inicial não pode ser negativo."
+  }
+  ```
+
+### 5. Solicitação de Crédito para Empreendimento Solidário
+
+Registra uma solicitação de crédito produtivo solidário destinada a um empreendimento da comunidade, aplicando os princípios da **Arquitetura Hexagonal**.
+
+```bash
+curl -X POST http://localhost:8080/credit/solidarity \
+  -H "Content-Type: application/json" \
+  -d '{
+    "enterpriseName": "Coletivo Costura Solidária",
+    "document": "12.345.678/0001-90",
+    "communityLocation": "Bairro Periférico Sul",
+    "segment": "Confecção Têxtil Comunitária",
+    "requestedAmount": 3500.00,
+    "installmentMonths": 12,
+    "purpose": "Aquisição de maquinário de costura reta industrial"
+  }'
+```
+
+**Retorno esperado (201 Created):**
+
+```json
+{
+  "id": 2,
+  "enterprise": {
+    "name": "Coletivo Costura Solidária",
+    "document": "12.345.678/0001-90",
+    "communityLocation": "Bairro Periférico Sul",
+    "segment": "Confecção Têxtil Comunitária"
+  },
+  "requestedAmount": 3500.00,
+  "installmentMonths": 12,
+  "interestRate": 0,
+  "status": "UNDER_ANALYSIS",
+  "requestedAt": "2026-10-16T14:30:00",
+  "purpose": "Aquisição de maquinário de costura reta industrial"
+}
+```
+
+> **Regra Arquitetural (ASR):** Conforme os requisitos do CommuniTracker, a taxa de juros (`interestRate`) é fixada inegociável e sistemicamente em **0%**.
+
+**Validações e Casos de Erro (400 Bad Request):**
+
+- Caso o valor seja inferior ao mínimo comunitário (R$ 100,00):
+
+  ```json
+  {
+    "error": "O valor mínimo para solicitação de crédito solidário é R$ 100,00."
+  }
+  ```
+
+- Caso o valor exceda o teto sem aval ampliado (R$ 10.000,00):
+
+  ```json
+  {
+    "error": "O valor máximo para crédito solidário sem aval ampliado é R$ 10.000,00."
+  }
+  ```
+
+- Caso o prazo de parcelamento seja menor que 1 ou superior a 24 meses:
+
+  ```json
+  {
+    "error": "O prazo de parcelamento deve ser entre 1 e 24 meses."
+  }
+  ```
+
+- Caso dados obrigatórios do empreendimento ou a finalidade produtiva estejam ausentes:
+
+  ```json
+  {
+    "error": "O nome do empreendimento é obrigatório."
   }
   ```
