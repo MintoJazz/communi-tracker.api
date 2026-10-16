@@ -25,8 +25,7 @@ public class AccountsController {
 
     public record CreateAccountRequest(String owner, BigDecimal initialBalance) {}
 
-    @PostMapping
-    public ResponseEntity<Object> createAccount(@RequestBody CreateAccountRequest request) {
+    @PostMapping public ResponseEntity<Object> createAccount(@RequestBody CreateAccountRequest request) {
         var result = createAccountUseCase.execute(request.owner(), request.initialBalance());
         
         return switch (result) {
@@ -35,8 +34,7 @@ public class AccountsController {
         };
     }
 
-    @GetMapping
-    public ResponseEntity<Object> getAccounts() {
+    @GetMapping public ResponseEntity<Object> getAccounts() {
         var result = listAccountsUseCase.execute();
         return switch (result) {
             case Result.Success<?> s -> ResponseEntity.ok(s.data());
