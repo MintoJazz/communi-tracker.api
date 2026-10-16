@@ -152,15 +152,15 @@ flowchart TD
 
     %% Fluxo de Entrada (Driving)
     Client -->|HTTP POST JSON| Controller
-    Controller -->|Invoca execute(Command)| InputPort
-    InputPort <|..| UseCase
+    Controller -->|Invoca execute| InputPort
+    UseCase -.->|implementa| InputPort
 
     %% Orquestração Interna do Hexágono
-    UseCase -->|Cria e Valida| Entities
-    UseCase -->|Invoca save(CreditRequest)| OutputPort
+    UseCase -->|Cria e valida| Entities
+    UseCase -->|Invoca save| OutputPort
 
     %% Fluxo de Saída (Driven - Inversão de Dependência)
-    OutputPort <|..| RepositoryImpl
+    RepositoryImpl -.->|implementa| OutputPort
     RepositoryImpl -->|Persiste dados| DataStore
 ```
 
